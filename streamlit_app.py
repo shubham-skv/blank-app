@@ -1,9 +1,7 @@
 import streamlit as st
 
-st.title("🎈 My new app")
-st.write(
-    "This is a Downloading test"
-)
+#st.title("🎈 BTEUP QUESTION PAPER DOWNLOADING APP")
+#st.write(  "JUST A TEST APP")
 import streamlit as st
 import requests
 import base64
@@ -110,14 +108,18 @@ def get_question_paper_images(copy_no):
     url = f"https://bteexam.com/Examiner/Print_Question_Paper?QPNO={encoded_qp}"
 
     try:
-        response = requests.get(url)
-        response.raise_for_status()
+        response = requests.get(url, timeout=10)  # Set timeout to avoid hanging
+        if response.status_code == 500:
+            st.warning("Invalid Copy Number: No question paper found for the given copy number. Please check and try again.")
+            return None
+        response.raise_for_status()  # Raise an error for other HTTP issues
 
         soup = BeautifulSoup(response.text, "html.parser")
         img_tags = soup.find_all("img")
 
         if not img_tags:
-            return None  # No images found
+            st.warning("No images found on the page. The Question Paper number might be incorrect.")
+            return None
 
         img_urls = []
         for img_tag in img_tags:
@@ -128,25 +130,34 @@ def get_question_paper_images(copy_no):
 
         return img_urls
 
+    except requests.exceptions.ConnectionError:
+        st.error("Network Error: Unable to connect to the server. Please check your internet connection.")
+        return None
+
+    except requests.exceptions.Timeout:
+        st.error("Request Timeout: The server took too long to respond. Please try again later.")
+        return None
+
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"HTTP Error: {http_err}")
+        return None
+
     except Exception as e:
-        st.error(f"Error fetching question paper: {e}")
+        st.error(f"An unexpected error occurred: {e}")
         return None
 
 # Streamlit UI
-st.title("Question Paper Viewer")
+st.title("BTEUP Question Paper Viewer")
 
 # User input for copy number
-copy_no = st.text_input("Enter Copy Number")
+copy_no = st.text_input("Enter Question Paper Number")
 
 if st.button("View Question Paper"):
-    if copy_no:
+    if copy_no.strip():  # Check if input is not empty
         img_urls = get_question_paper_images(copy_no)
         if img_urls:
-            st.subheader("Question Paper Images:")
+            #st.subheader("Question Paper Images:")
             for img_url in img_urls:
-                st.image(img_url, use_container_width=True)
-        else:
-            st.warning("No images found for the given copy number.")
+                st.image(img_url, use_container_width=True)  # Fixed parameter
     else:
-        st.warning("Please enter a valid Copy Number.")
-
+        st.warning("Please enter a valid Question Paper Number.")
