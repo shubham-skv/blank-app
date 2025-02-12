@@ -1,10 +1,8 @@
 import streamlit as st
-
-#st.title("🎈 BTEUP QUESTION PAPER DOWNLOADING APP")
-#st.write(  "JUST A TEST APP")
-import streamlit as st
 import requests
 import base64
+import img2pdf
+from io import BytesIO
 from bs4 import BeautifulSoup
 
 # Updated dictionary with question paper numbers and subject names
@@ -90,16 +88,6 @@ question_papers = {
     "2110": "DIGITAL ELECTRONICS",
     "2099": "BUILDING DRAWINGS",
     "2081": "ANALOG ELECTRONICS",
-    "4101": "Mathematics-I",
-    "4102": "Applied Physics-I",
-    "4103": "Applied Chemistry",
-    "4104": "Communication Skills in English",
-    "4105": "Engineering Graphics",
-    "4101_B": "Mathematics-I_B",
-    "4102_B": "Applied Physics-I_B",
-    "4103_B": "Applied Chemistry_B",
-    "4104_B": "Communication Skills in English_B",
-    "4105_B": "Engineering Graphics_B"
 }
 
 def get_question_paper_images(copy_no):
@@ -108,56 +96,62 @@ def get_question_paper_images(copy_no):
     url = f"https://bteexam.com/Examiner/Print_Question_Paper?QPNO={encoded_qp}"
 
     try:
-        response = requests.get(url, timeout=10)  # Set timeout to avoid hanging
-        if response.status_code == 500:
-            st.warning("Invalid Copy Number: No question paper found for the given copy number. Please check and try again.")
-            return None
-        response.raise_for_status()  # Raise an error for other HTTP issues
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
         img_tags = soup.find_all("img")
-
-        if not img_tags:
-            st.warning("No images found on the page. The Question Paper number might be incorrect.")
-            return None
 
         img_urls = []
         for img_tag in img_tags:
             img_url = img_tag["src"]
             if not img_url.startswith("http"):
-                img_url = f"https://bteexam.com{img_url}"  # Handle relative URLs
+                img_url = f"https://bteexam.com{img_url}"
             img_urls.append(img_url)
 
         return img_urls
 
-    except requests.exceptions.ConnectionError:
-        st.error("Network Error: Unable to connect to the server. Please check your internet connection.")
+    except Exception:
         return None
 
-    except requests.exceptions.Timeout:
-        st.error("Request Timeout: The server took too long to respond. Please try again later.")
-        return None
+def create_pdf_from_images(img_urls):
+    """Download images and generate a PDF."""
+    pdf_bytes = BytesIO()
+    img_data_list = []
 
-    except requests.exceptions.HTTPError as http_err:
-        st.error(f"HTTP Error: {http_err}")
-        return None
+    for img_url in img_urls:
+        response = requests.get(img_url)
+        if response.status_code == 200:
+            img_data_list.append(response.content)
 
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        return None
+    pdf_bytes.write(img2pdf.convert(img_data_list))
+    pdf_bytes.seek(0)
+
+    return pdf_bytes
 
 # Streamlit UI
 st.title("BTEUP Question Paper Viewer")
-
-# User input for copy number
+url1 = "https://bteup.ac.in/PDFFILES/NEWS_638701455709583359.pdf"
+url2 = "https://bteup.ac.in/PDFFILES/NEWS_638701455343935289.pdf"
+st.write("To know the QP Code of Back/Special Back Subject [Click Here ](%s)" % url1)
+st.write("To know the QP Code of Regular Subject [Click Here ](%s) "% url2)
 copy_no = st.text_input("Enter Question Paper Number")
 
 if st.button("View Question Paper"):
-    if copy_no.strip():  # Check if input is not empty
+    if copy_no.strip():
         img_urls = get_question_paper_images(copy_no)
         if img_urls:
-            #st.subheader("Question Paper Images:")
             for img_url in img_urls:
-                st.image(img_url, use_container_width=True)  # Fixed parameter
+                st.image(img_url, use_container_width=True)
+
+            pdf_file = create_pdf_from_images(img_urls)
+            st.download_button(
+                label="📄 Save as PDF",
+                data=pdf_file,
+                file_name=f"{copy_no}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("No images found. The Question Paper number might be incorrect.")
     else:
         st.warning("Please enter a valid Question Paper Number.")
