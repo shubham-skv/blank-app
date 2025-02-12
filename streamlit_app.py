@@ -2,7 +2,7 @@ import streamlit as st
 
 st.title("🎈 My new app")
 st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
+    "This is a Downloading test"
 )
 import streamlit as st
 import requests
@@ -144,7 +144,7 @@ if st.button("View Question Paper"):
         if img_urls:
             st.subheader("Question Paper Images:")
             for img_url in img_urls:
-                st.image(img_url, use_column_width=True)
+                st.image(img_url, use_container_width=True)
         else:
             st.warning("No images found for the given copy number.")
     else:
